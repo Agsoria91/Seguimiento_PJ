@@ -82,6 +82,9 @@
   .pill{border:1px solid var(--border);background:var(--surface-2);color:var(--text-secondary);border-radius:20px;padding:6px 13px;font-size:12px;font-weight:600;cursor:pointer;user-select:none;}
   .pill.active{background:var(--brand-navy);border-color:var(--brand-navy);color:#fff;}
   .pill.proc.active{background:var(--brand-plum);border-color:var(--brand-plum);}
+  .pill.estado.active{background:#c98a12;border-color:#c98a12;}
+  .filter-cols{display:grid;grid-template-columns:1fr 1fr;gap:20px;}
+  @media (max-width:800px){ .filter-cols{grid-template-columns:1fr;} }
   .search-input{width:100%;max-width:340px;padding:8px 12px;border-radius:20px;border:1px solid var(--border);background:var(--surface-2);color:var(--text-primary);font-size:12.5px;font-family:inherit;}
   .filter-divider{border:none;border-top:1px solid var(--border);margin:14px 0 18px;}
 
@@ -192,9 +195,15 @@
     <div class="filter-label">Dirección</div>
     <div class="filters" id="direccionFilters"></div>
   </div>
-  <div class="filter-block">
-    <div class="filter-label">Proceso</div>
-    <div class="filters" id="procesoFilters"></div>
+  <div class="filter-cols">
+    <div class="filter-block">
+      <div class="filter-label">Proceso</div>
+      <div class="filters" id="procesoFilters"></div>
+    </div>
+    <div class="filter-block">
+      <div class="filter-label">Estado</div>
+      <div class="filters" id="estadoFilters"></div>
+    </div>
   </div>
   <div class="filter-block">
     <div class="filter-label">Buscar puesto o persona</div>
@@ -267,7 +276,9 @@
   let storageWorks = true;
 
   const ESTADO_ORDER = ["Pendiente definicion linea","Apertura","Screeening candidatos","Entrevistas","Revision RH","Oferta","Examen medico","On hold","Sin dato"];
+  const ESTADO_FILTER_ORDER = ["Pendiente definicion linea","Apertura","Screeening candidatos","Entrevistas","Revision RH","Oferta","Examen medico","Cerrado","On hold","Sin dato"];
   const ESTADO_LABELS = {
+    "Cerrado":"Cerrado",
     "Pendiente definicion linea":"Pend. definición línea",
     "Apertura":"Apertura",
     "Screeening candidatos":"Screening candidatos",
@@ -290,7 +301,7 @@
     "Sin dato":"Sin dato"
   };
 
-  let state = { empresa: "Todas", direccion: "Todas", proceso: "Todos", anios: "Todos", meses: "Todos", search: "" };
+  let state = { empresa: "Todas", direccion: "Todas", proceso: "Todos", estado: "Todos", anios: "Todos", meses: "Todos", search: "" };
   let openMselId = null;
 
   const MESES = {"01":"Ene","02":"Feb","03":"Mar","04":"Abr","05":"May","06":"Jun",
@@ -306,6 +317,7 @@
       if (state.empresa !== "Todas" && r.empresa !== state.empresa) return false;
       if (state.direccion !== "Todas" && r.direccion !== state.direccion) return false;
       if (state.proceso !== "Todos" && r.proceso !== state.proceso) return false;
+      if (state.estado !== "Todos" && r.estado !== state.estado) return false;
       if (state.anios !== "Todos" && !state.anios.has(r.anioSolicitud)) return false;
       if (state.meses !== "Todos" && !state.meses.has(r.mesSolicitud)) return false;
       if (state.search){
@@ -386,6 +398,8 @@
     const empresas = ["Todas", ...uniqueSorted(DATA.map(r=>r.empresa))];
     const direcciones = ["Todas", ...uniqueSorted(DATA.map(r=>r.direccion))];
     const procesos = ["Todos", ...uniqueSorted(DATA.map(r=>r.proceso))];
+    const estadosPresentes = new Set(DATA.map(r=>r.estado));
+    const estados = ["Todos", ...ESTADO_FILTER_ORDER.filter(e => estadosPresentes.has(e))];
     const anios = uniqueSorted(DATA.map(r=>r.anioSolicitud).filter(Boolean)).sort((a,b)=>b.localeCompare(a));
 
     document.getElementById('empresaFilters').innerHTML = empresas.map(e =>
@@ -394,6 +408,8 @@
       `<div class="pill${d===state.direccion?' active':''}" data-f="direccion" data-v="${d}">${d}</div>`).join('');
     document.getElementById('procesoFilters').innerHTML = procesos.map(p =>
       `<div class="pill proc${p===state.proceso?' active':''}" data-f="proceso" data-v="${p}">${PROCESO_LABELS[p]||p}</div>`).join('');
+    document.getElementById('estadoFilters').innerHTML = estados.map(s =>
+      `<div class="pill estado${s===state.estado?' active':''}" data-f="estado" data-v="${s}">${s==="Todos"?"Todos":(ESTADO_LABELS[s]||s)}</div>`).join('');
 
     buildMultiSelect('anioMsel', anios, (v)=>v, ()=>state.anios, (v)=>{state.anios=v;}, "Todos los años");
     buildMultiSelect('mesMsel', MES_ORDER, (v)=>MESES_LARGO[v], ()=>state.meses, (v)=>{state.meses=v;}, "Todos los meses");
@@ -702,7 +718,7 @@
         const newData = rowsToData(rows);
         if (newData.length === 0) throw new Error('El archivo no tiene filas de datos.');
         DATA = newData;
-        state = { empresa: "Todas", direccion: "Todas", proceso: "Todos", anios: "Todos", meses: "Todos", search: "" };
+        state = { empresa: "Todas", direccion: "Todas", proceso: "Todos", estado: "Todos", anios: "Todos", meses: "Todos", search: "" };
         saveToStorage(DATA);
         renderAll();
         if (storageWorks){
@@ -720,7 +736,7 @@
 
   document.getElementById('restoreBtn').addEventListener('click', () => {
     DATA = DATA_ORIGINAL;
-    state = { empresa: "Todas", direccion: "Todas", proceso: "Todos", anios: "Todos", meses: "Todos", search: "" };
+    state = { empresa: "Todas", direccion: "Todas", proceso: "Todos", estado: "Todos", anios: "Todos", meses: "Todos", search: "" };
     clearStorage();
     renderAll();
     showUploadStatus('↺ Se restauraron los datos originales del archivo.', 'ok');
